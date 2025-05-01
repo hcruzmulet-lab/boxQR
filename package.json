@@ -9,10 +9,22 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@expo/vector-icons": "^14.1.0",
+    "@react-navigation/bottom-tabs": "^7.3.10",
+    "@react-navigation/native": "^7.1.6",
+    "@react-navigation/native-stack": "^7.3.10",
     "expo": "~53.0.4",
+    "expo-barcode-scanner": "^13.0.1",
+    "expo-sharing": "^13.1.5",
     "expo-status-bar": "~2.2.3",
     "react": "19.0.0",
-    "react-native": "0.79.1"
+    "react-native": "0.79.1",
+    "react-native-qr-svg": "^1.5.0",
+    "react-native-safe-area-context": "^5.4.0",
+    "react-native-screens": "^4.10.0",
+    "react-native-svg": "^15.11.2",
+    "react-native-view-shot": "^4.0.3",
+    "expo-camera": "~16.1.6"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
