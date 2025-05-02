@@ -20,14 +20,28 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.CAMERA"
+      ],
+      "package": "com.hcruzmulet.boxQR"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-barcode-scanner",
       "expo-sqlite"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "7481dab8-ce1c-415a-92df-0bd4c846e05b"
+      }
+    },
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["expo-barcode-scanner", "react-native-qr-svg"]
+      }
+    },
+    "owner": "hcruzmulet"
   }
 }

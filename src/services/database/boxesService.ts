@@ -34,6 +34,9 @@ export class BoxesService {
    */
   public async getAllBoxes(): Promise<Box[]> {
     try {
+      // Aseguramos que la base de datos esté inicializada antes de consultar
+      await this.initialize();
+      
       const db = this.dbService.getDatabase();
       const result = await db.getAllAsync<Box>('SELECT * FROM boxes ORDER BY updatedAt DESC');
       return result;

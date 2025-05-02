@@ -8,7 +8,7 @@ const DATABASE_NAME = 'boxqr.db';
 const DATABASE_VERSION = 2; // Incrementamos la versión al agregar nuevas tablas
 
 // Variable para indicar si estamos en modo de prueba (eliminar tablas y recrear)
-const TEST_MODE = true;
+const TEST_MODE = false; // Cambiado a false para mantener las tablas y datos
 
 /**
  * Clase singleton para gestionar la conexión a la base de datos SQLite
@@ -52,48 +52,61 @@ export class DatabaseService {
       
       if (this.initialized) return;
 
-      console.log('Creando tablas de la base de datos...');
+      // Verificar si las tablas existen
+      const tableCheck = await this.database.getFirstAsync<{cnt: number}>(
+        "SELECT count(*) as cnt FROM sqlite_master WHERE type='table' AND name='boxes'"
+      );
       
-      // Crear tabla de contenedores (boxes)
-      await this.database.execAsync(`
-        CREATE TABLE IF NOT EXISTS boxes (
-          id TEXT PRIMARY KEY NOT NULL,
-          name TEXT NOT NULL,
-          description TEXT,
-          location TEXT,
-          category TEXT,
-          itemCount INTEGER NOT NULL DEFAULT 0,
-          createdAt INTEGER NOT NULL,
-          updatedAt INTEGER NOT NULL
-        )
-      `);
+      const tablesExist = tableCheck && tableCheck.cnt > 0;
+      
+      if (!tablesExist) {
+        console.log('Tablas no encontradas. Creando estructura de la base de datos...');
+      
+        // Crear tabla de contenedores (boxes)
+        await this.database.execAsync(`
+          CREATE TABLE IF NOT EXISTS boxes (
+            id TEXT PRIMARY KEY NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            location TEXT,
+            category TEXT,
+            itemCount INTEGER NOT NULL DEFAULT 0,
+            createdAt INTEGER NOT NULL,
+            updatedAt INTEGER NOT NULL
+          )
+        `);
 
-      // Crear tabla de productos relacionados a los contenedores
-      await this.database.execAsync(`
-        CREATE TABLE IF NOT EXISTS products (
-          id TEXT PRIMARY KEY NOT NULL,
-          boxId TEXT NOT NULL,
-          name TEXT NOT NULL,
-          description TEXT,
-          quantity INTEGER NOT NULL DEFAULT 1,
-          createdAt INTEGER NOT NULL,
-          updatedAt INTEGER NOT NULL,
-          FOREIGN KEY (boxId) REFERENCES boxes(id) ON DELETE CASCADE
-        )
-      `);
+        // Crear tabla de productos relacionados a los contenedores
+        await this.database.execAsync(`
+          CREATE TABLE IF NOT EXISTS products (
+            id TEXT PRIMARY KEY NOT NULL,
+            boxId TEXT NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            quantity INTEGER NOT NULL DEFAULT 1,
+            createdAt INTEGER NOT NULL,
+            updatedAt INTEGER NOT NULL,
+            FOREIGN KEY (boxId) REFERENCES boxes(id) ON DELETE CASCADE
+          )
+        `);
 
-      // Crear tabla para las fotos de los productos
-      await this.database.execAsync(`
-        CREATE TABLE IF NOT EXISTS product_photos (
-          id TEXT PRIMARY KEY NOT NULL,
-          productId TEXT NOT NULL,
-          photoUri TEXT NOT NULL,
-          isPrimary INTEGER NOT NULL DEFAULT 0,
-          createdAt INTEGER NOT NULL,
-          updatedAt INTEGER NOT NULL,
-          FOREIGN KEY (productId) REFERENCES products(id) ON DELETE CASCADE
-        )
-      `);
+        // Crear tabla para las fotos de los productos
+        await this.database.execAsync(`
+          CREATE TABLE IF NOT EXISTS product_photos (
+            id TEXT PRIMARY KEY NOT NULL,
+            productId TEXT NOT NULL,
+            photoUri TEXT NOT NULL,
+            isPrimary INTEGER NOT NULL DEFAULT 0,
+            createdAt INTEGER NOT NULL,
+            updatedAt INTEGER NOT NULL,
+            FOREIGN KEY (productId) REFERENCES products(id) ON DELETE CASCADE
+          )
+        `);
+        
+        console.log('Tablas creadas correctamente');
+      } else {
+        console.log('Tablas existentes detectadas, omitiendo creación');
+      }
       
       this.initialized = true;
       console.log('Base de datos inicializada correctamente');
