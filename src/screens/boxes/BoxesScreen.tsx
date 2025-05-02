@@ -21,6 +21,8 @@ import { Box } from '../../components/boxes/BoxCard';
 import BoxCard from '../../components/boxes/BoxCard';
 import { BoxesStackParamList } from '../../types/navigation';
 import { BoxesService } from '../../services/database/boxesService';
+// Importamos el componente QRCodeModal
+import QRCodeModal from '../../components/qr/QRCodeModal';
 
 // Componente personalizado para Chip
 interface ChipProps {
@@ -196,6 +198,8 @@ export function BoxesScreen() {
   const [categories, setCategories] = useState<string[]>([]);
   const [locations, setLocations] = useState<string[]>([]);
   const [isFiltered, setIsFiltered] = useState(false);
+  const [qrModalVisible, setQrModalVisible] = useState(false);
+  const [selectedBox, setSelectedBox] = useState<Box | null>(null);
 
   const navigation = useNavigation<StackNavigationProp<BoxesStackParamList>>();
   const isFocused = useIsFocused();
@@ -279,16 +283,9 @@ export function BoxesScreen() {
   };
 
   const handleGenerateQR = (box: Box) => {
-    // Usamos CommonActions para navegar entre diferentes stacks
-    navigation.dispatch(
-      CommonActions.navigate({
-        name: 'QRStack',
-        params: {
-          screen: 'QRScan',
-          params: { boxId: box.id }
-        }
-      })
-    );
+    // Guardamos la caja seleccionada y mostramos el modal QR
+    setSelectedBox(box);
+    setQrModalVisible(true);
   };
 
   const handleDelete = async (boxId: string) => {
@@ -440,6 +437,16 @@ export function BoxesScreen() {
           </View>
         </Pressable>
       </Modal>
+
+      {/* Modal de QR para generar y compartir códigos QR */}
+      {selectedBox && (
+        <QRCodeModal
+          visible={qrModalVisible}
+          onClose={() => setQrModalVisible(false)}
+          boxId={selectedBox.id}
+          boxName={selectedBox.name}
+        />
+      )}
 
       <FAB
         icon="add"
