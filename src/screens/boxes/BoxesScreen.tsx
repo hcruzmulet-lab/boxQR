@@ -153,7 +153,7 @@ const buttonStyles = StyleSheet.create({
 // Componente personalizado para FAB
 interface FABProps {
   onPress: () => void;
-  icon: string;
+  icon: keyof typeof Ionicons.glyphMap;
   style?: any;
 }
 
@@ -316,7 +316,7 @@ export function BoxesScreen() {
 
   return (
     <View style={styles.container}>
-      {/* <View style={styles.header}>
+      <View style={styles.header}>
         <Text style={styles.headerTitle}>Mis Contenedores</Text>
         {isFiltered && (
           <TouchableOpacity 
@@ -334,9 +334,9 @@ export function BoxesScreen() {
             <Text style={styles.filterButtonText}>Filtrar</Text>
           </TouchableOpacity>
         )}
-      </View> */}
+      </View>
       
-      {/* {isFiltered && (
+      {isFiltered && (
         <View style={styles.activeFiltersContainer}>
           {selectedCategory && (
             <CustomChip 
@@ -355,7 +355,7 @@ export function BoxesScreen() {
             </CustomChip>
           )}
         </View>
-      )} */}
+      )}
 
       <FlatList
         data={boxes}
