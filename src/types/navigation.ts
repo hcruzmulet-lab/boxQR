@@ -19,4 +19,5 @@ export type BoxesStackParamList = {
 export type QRStackParamList = {
   QRScan: undefined;
   BoxDetail: { boxId: string; updatedBox?: Box };
+  BoxProducts: { boxId: string }; // Añadido para permitir navegación desde QR a productos
 };

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { RouteProp, useNavigation, useRoute } from '@react-navigation/native';
+import { RouteProp, useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { BoxesStackParamList, QRStackParamList } from '../../types/navigation';
@@ -18,7 +18,10 @@ type BoxDetailParams = {
   updatedBox?: Box;
 };
 
-type BoxDetailScreenNavigationProp = NativeStackNavigationProp<BoxesStackParamList, 'BoxDetail'>;
+// Tipo para la navegación, que ahora puede provenir de cualquiera de los dos stacks
+type BoxDetailScreenNavigationProp = 
+  | NativeStackNavigationProp<BoxesStackParamList, 'BoxDetail'>
+  | NativeStackNavigationProp<QRStackParamList, 'BoxDetail'>;
 
 const BoxDetailScreen = () => {
   const route = useRoute<BoxDetailScreenRouteProp>();
@@ -29,6 +32,16 @@ const BoxDetailScreen = () => {
   // Obtener el ID y el objeto actualizado (si existe) de los parámetros de ruta
   const { boxId, updatedBox } = route.params as BoxDetailParams;
   const boxesService = BoxesService.getInstance();
+
+  // Función auxiliar para determinar en qué stack nos encontramos
+  const isInBoxesStack = () => {
+    return 'EditBox' in (navigation.getParent()?.getState()?.routeNames ?? []);
+  };
+
+  // Función segura para navegar hacia atrás
+  const safeGoBack = () => {
+    navigation.dispatch(CommonActions.goBack());
+  };
 
   useEffect(() => {
     // Si tenemos un objeto actualizado, lo usamos directamente
@@ -60,14 +73,30 @@ const BoxDetailScreen = () => {
   // Manejar la navegación a la pantalla de edición
   const handleEdit = () => {
     if (box) {
-      navigation.navigate('EditBox', { box });
+      // Determinar el stack de navegación por las rutas disponibles
+      if (isInBoxesStack()) {
+        // Estamos en BoxesStack
+        const boxesNavigation = navigation as NativeStackNavigationProp<BoxesStackParamList>;
+        boxesNavigation.navigate('EditBox', { box });
+      } else {
+        // Si estamos en QRStack, necesitamos navegar diferente o mostrar un mensaje
+        console.log('La edición no está disponible desde el escáner QR');
+        alert('Para editar este contenedor, accede desde la sección de Contenedores');
+      }
     }
   };
 
   // Manejar la navegación a la pantalla de productos
   const handleViewProducts = () => {
     if (box) {
-      navigation.navigate('BoxProducts', { boxId: box.id });
+      // La pantalla BoxProducts existe en ambos stacks, así que podemos
+      // navegar usando CommonActions que funciona en ambos casos
+      navigation.dispatch(
+        CommonActions.navigate({
+          name: 'BoxProducts',
+          params: { boxId: box.id }
+        })
+      );
     }
   };
 
@@ -90,7 +119,7 @@ const BoxDetailScreen = () => {
         </Text>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={safeGoBack}
         >
           <Text style={styles.backButtonText}>Volver</Text>
         </TouchableOpacity>

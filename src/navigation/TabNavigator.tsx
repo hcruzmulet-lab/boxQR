@@ -126,6 +126,18 @@ const QRStackNavigator = () => {
           headerTintColor: '#FFFFFF',
         }}
       />
+      <QRStack.Screen 
+        name="BoxProducts" 
+        component={BoxProductsScreen}
+        options={{ 
+          title: "Productos del Contenedor",
+          headerBackTitle: "",
+          headerStyle: {
+            backgroundColor: '#007AFF',
+          },
+          headerTintColor: '#FFFFFF',
+        }}
+      />
     </QRStack.Navigator>
   );
 };
