@@ -9,6 +9,7 @@ import AddBoxScreen from '../screens/boxes/AddBoxScreen';
 import BoxDetailScreen from '../screens/boxes/BoxDetailScreen';
 import EditBoxScreen from '../screens/boxes/EditBoxScreen';
 import BoxProductsScreen from '../screens/boxes/BoxProductsScreen';
+import AddProductScreen from '../screens/boxes/AddProductScreen';
 import QRScreen from '../screens/qr/QRScreen';
 import FAQScreen from '../screens/FAQ/FAQScreen';
 
@@ -75,6 +76,18 @@ const BoxesStackNavigator = () => {
         component={BoxProductsScreen}
         options={{ 
           title: "Productos del Contenedor",
+          headerBackTitle: "",
+          headerStyle: {
+            backgroundColor: '#007AFF',
+          },
+          headerTintColor: '#FFFFFF',
+        }}
+      />
+      <BoxesStack.Screen 
+        name="AddProduct" 
+        component={AddProductScreen}
+        options={{ 
+          title: "Añadir Producto",
           headerBackTitle: "",
           headerStyle: {
             backgroundColor: '#007AFF',

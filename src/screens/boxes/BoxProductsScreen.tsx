@@ -1,4 +1,3 @@
-// filepath: /Users/henrycruzmulet/work/personal/boxQR/src/screens/boxes/BoxProductsScreen.tsx
 import React, { useState, useEffect } from 'react';
 import { 
   View, 
@@ -138,8 +137,7 @@ const BoxProductsScreen = () => {
 
   // Navegar a la pantalla para agregar un nuevo producto
   const navigateToAddProduct = () => {
-    // Esta función se implementará cuando creemos la pantalla de agregar producto
-    Alert.alert('Info', 'La pantalla para agregar productos se implementará próximamente');
+    navigation.navigate('AddProduct', { boxId });
   };
 
   // Eliminar un producto
