@@ -5,37 +5,64 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { BoxesStackParamList, QRStackParamList } from '../../types/navigation';
 import { Box } from '../../components/boxes/BoxCard';
-import { MOCK_BOXES } from '../../constants/mockData';
+import { BoxesService } from '../../services/database/boxesService';
 
 // Tipo para las rutas que pueden acceder a esta pantalla
 type BoxDetailScreenRouteProp = 
   | RouteProp<BoxesStackParamList, 'BoxDetail'>
   | RouteProp<QRStackParamList, 'BoxDetail'>;
 
+// Ampliamos el tipo para incluir el parámetro opcional updatedBox
+type BoxDetailParams = {
+  boxId: string;
+  updatedBox?: Box;
+};
+
+type BoxDetailScreenNavigationProp = NativeStackNavigationProp<BoxesStackParamList, 'BoxDetail'>;
+
 const BoxDetailScreen = () => {
   const route = useRoute<BoxDetailScreenRouteProp>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<BoxDetailScreenNavigationProp>();
   const [box, setBox] = useState<Box | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Obtener el ID del contenedor de los parámetros de ruta
-  const { boxId } = route.params;
+  // Obtener el ID y el objeto actualizado (si existe) de los parámetros de ruta
+  const { boxId, updatedBox } = route.params as BoxDetailParams;
+  const boxesService = BoxesService.getInstance();
 
   useEffect(() => {
-    // Simulamos una carga de datos
-    const timer = setTimeout(() => {
-      // Buscar el contenedor en los datos mockeados
-      const foundBox = MOCK_BOXES.find(item => item.id === boxId);
-      
-      if (foundBox) {
-        setBox(foundBox);
-      }
-      
+    // Si tenemos un objeto actualizado, lo usamos directamente
+    if (updatedBox) {
+      setBox(updatedBox);
       setLoading(false);
-    }, 800); // Pequeño retraso para simular carga
+      return;
+    }
 
-    return () => clearTimeout(timer);
-  }, [boxId]);
+    // Carga el contenedor desde la base de datos
+    const loadBoxDetails = async () => {
+      try {
+        setLoading(true);
+        const foundBox = await boxesService.getBoxById(boxId);
+        
+        if (foundBox) {
+          setBox(foundBox);
+        }
+      } catch (error) {
+        console.error('Error al cargar el detalle del contenedor:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBoxDetails();
+  }, [boxId, updatedBox]);
+
+  // Manejar la navegación a la pantalla de edición
+  const handleEdit = () => {
+    if (box) {
+      navigation.navigate('EditBox', { box });
+    }
+  };
 
   if (loading) {
     return (
@@ -80,6 +107,18 @@ const BoxDetailScreen = () => {
           <Text style={styles.infoLabel}>Cantidad de items:</Text>
           <Text style={styles.infoValue}>{box.itemCount}</Text>
         </View>
+        {box.category && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Categoría:</Text>
+            <Text style={styles.infoValue}>{box.category}</Text>
+          </View>
+        )}
+        {box.location && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Ubicación:</Text>
+            <Text style={styles.infoValue}>{box.location}</Text>
+          </View>
+        )}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Estado:</Text>
           <Text style={[styles.infoValue, styles.statusActive]}>Activo</Text>
@@ -92,13 +131,20 @@ const BoxDetailScreen = () => {
         </View>
       </View>
 
+      {box.description && (
+        <View style={styles.descriptionCard}>
+          <Text style={styles.infoTitle}>Descripción</Text>
+          <Text style={styles.descriptionText}>{box.description}</Text>
+        </View>
+      )}
+
       <View style={styles.actionsContainer}>
         <TouchableOpacity style={styles.actionButton}>
           <Ionicons name="list" size={28} color="#007AFF" />
           <Text style={styles.actionText}>Ver Items</Text>
         </TouchableOpacity>
         
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleEdit}>
           <Ionicons name="pencil" size={28} color="#007AFF" />
           <Text style={styles.actionText}>Editar</Text>
         </TouchableOpacity>
@@ -239,6 +285,22 @@ const styles = StyleSheet.create({
     marginTop: 8,
     color: '#007AFF',
     fontSize: 14,
+  },
+  descriptionCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+    marginBottom: 16,
+  },
+  descriptionText: {
+    fontSize: 16,
+    lineHeight: 22,
+    color: '#333',
   },
 });
 

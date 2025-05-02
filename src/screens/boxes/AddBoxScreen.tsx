@@ -7,12 +7,14 @@ import {
   TouchableOpacity, 
   KeyboardAvoidingView, 
   Platform,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Box } from '../../components/boxes/BoxCard';
 import { BoxesStackParamList } from '../../types/navigation';
+import { BoxesService } from '../../services/database/boxesService';
 
 // Definiendo el tipo de navegación para esta pantalla
 type AddBoxScreenNavigationProp = NativeStackNavigationProp<BoxesStackParamList, 'AddBox'>;
@@ -27,13 +29,15 @@ const AddBoxScreen = () => {
   const navigation = useNavigation<AddBoxScreenNavigationProp>();
   const [boxName, setBoxName] = useState('');
   const [boxId, setBoxId] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const boxesService = BoxesService.getInstance();
 
   // Generar un ID aleatorio al cargar la pantalla
   useEffect(() => {
     setBoxId(generateBoxId());
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!boxName.trim()) {
       Alert.alert(
         "Campo requerido", 
@@ -42,15 +46,35 @@ const AddBoxScreen = () => {
       return;
     }
 
-    // Crear el nuevo objeto de contenedor
-    const newBox: Box = {
-      id: boxId,
-      name: boxName,
-      itemCount: 0 // Inicialmente el contenedor está vacío
-    };
+    try {
+      setIsSaving(true);
+      
+      // Crear el nuevo objeto de contenedor
+      const newBox: Box = {
+        id: boxId,
+        name: boxName,
+        itemCount: 0 // Inicialmente el contenedor está vacío
+      };
 
-    // Volver a la pantalla anterior y pasar el nuevo contenedor
-    navigation.navigate('Contenedores', { newBox });
+      // Guardar el nuevo contenedor en la base de datos
+      await boxesService.initialize();
+      await boxesService.addBox(newBox);
+      
+      // Volver a la pantalla anterior
+      Alert.alert(
+        "Éxito",
+        "Contenedor creado correctamente",
+        [{ text: "OK", onPress: () => navigation.goBack() }]
+      );
+    } catch (error) {
+      console.error('Error al guardar el contenedor:', error);
+      Alert.alert(
+        "Error",
+        "No se pudo guardar el contenedor. Intente nuevamente."
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -85,6 +109,7 @@ const AddBoxScreen = () => {
           <TouchableOpacity 
             style={[styles.button, styles.cancelButton]} 
             onPress={() => navigation.goBack()}
+            disabled={isSaving}
           >
             <Text style={styles.cancelButtonText}>Cancelar</Text>
           </TouchableOpacity>
@@ -92,8 +117,13 @@ const AddBoxScreen = () => {
           <TouchableOpacity 
             style={[styles.button, styles.saveButton]} 
             onPress={handleSave}
+            disabled={isSaving}
           >
-            <Text style={styles.saveButtonText}>Guardar</Text>
+            {isSaving ? (
+              <ActivityIndicator color="white" size="small" />
+            ) : (
+              <Text style={styles.saveButtonText}>Guardar</Text>
+            )}
           </TouchableOpacity>
         </View>
       </View>

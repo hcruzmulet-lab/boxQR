@@ -1,170 +1,332 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  FlatList, 
-  Alert,
-  TouchableOpacity 
-} from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Text, Alert } from 'react-native';
+import { useIsFocused, useNavigation, CommonActions } from '@react-navigation/native';
+// Reemplazamos la importación de react-use por nuestra implementación personalizada
+import { useUpdateEffect } from '../../hooks/useUpdateEffect';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { Searchbar, FAB, Menu, Button, Chip, Modal, Portal, Card } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
-import { 
-  useNavigation, 
-  useRoute, 
-  useIsFocused, 
-  RouteProp 
-} from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import BoxCard, { Box } from '../../components/boxes/BoxCard';
-import QRCodeModal from '../../components/qr/QRCodeModal';
-import { MOCK_BOXES } from '../../constants/mockData';
+
+import { Box } from '../../components/boxes/BoxCard';
+import BoxCard from '../../components/boxes/BoxCard';
 import { BoxesStackParamList } from '../../types/navigation';
+import { BoxesService } from '../../services/database/boxesService';
 
-// Definiendo los tipos específicos para esta pantalla
-type BoxesScreenNavigationProp = NativeStackNavigationProp<BoxesStackParamList, 'Contenedores'>;
-type BoxesScreenRouteProp = RouteProp<BoxesStackParamList, 'Contenedores'>;
+export function BoxesScreen() {
+  const [boxes, setBoxes] = useState<Box[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
+  const [filterModalVisible, setFilterModalVisible] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [locations, setLocations] = useState<string[]>([]);
+  const [isFiltered, setIsFiltered] = useState(false);
 
-const BoxesScreen = () => {
-  const [boxes, setBoxes] = useState<Box[]>(MOCK_BOXES);
-  const [qrModalVisible, setQrModalVisible] = useState(false);
-  const [selectedBox, setSelectedBox] = useState<Box | null>(null);
-  const navigation = useNavigation<BoxesScreenNavigationProp>();
-  const route = useRoute<BoxesScreenRouteProp>();
+  const navigation = useNavigation<StackNavigationProp<BoxesStackParamList>>();
   const isFocused = useIsFocused();
 
-  // Efecto para capturar el nuevo contenedor desde la pantalla de añadir
-  useEffect(() => {
-    if (isFocused && route.params?.newBox) {
-      const newBox = route.params.newBox as Box;
-      // Añadimos el nuevo contenedor al principio de la lista
-      setBoxes(prevBoxes => [newBox, ...prevBoxes]);
-      // Limpiamos los parámetros para evitar duplicados si volvemos a enfocar la pantalla
-      navigation.setParams({ newBox: undefined });
-    }
-  }, [isFocused, route.params?.newBox]);
+  const boxesService = BoxesService.getInstance();
 
-  const handleDelete = (id: string) => {
-    Alert.alert(
-      "Eliminar Contenedor",
-      "¿Estás seguro que deseas eliminar este contenedor?",
-      [
-        { text: "Cancelar", style: "cancel" },
-        { 
-          text: "Eliminar", 
-          style: "destructive",
-          onPress: () => {
-            // Filtramos el contenedor a eliminar
-            setBoxes(boxes.filter(box => box.id !== id));
-          } 
+  useEffect(() => {
+    loadBoxes();
+    loadFilterOptions();
+  }, []);
+
+  useUpdateEffect(() => {
+    if (isFocused) {
+      loadBoxes();
+    }
+  }, [isFocused]);
+
+  const loadBoxes = async () => {
+    try {
+      let loadedBoxes: Box[];
+      
+      if (searchQuery) {
+        loadedBoxes = await boxesService.searchBoxes(searchQuery);
+      } else if (selectedCategory || selectedLocation) {
+        loadedBoxes = await boxesService.filterBoxes({
+          category: selectedCategory || undefined,
+          location: selectedLocation || undefined,
+        });
+        setIsFiltered(true);
+      } else {
+        loadedBoxes = await boxesService.getAllBoxes();
+        setIsFiltered(false);
+      }
+      
+      setBoxes(loadedBoxes);
+    } catch (error) {
+      console.error('Error loading boxes', error);
+    }
+  };
+
+  const loadFilterOptions = async () => {
+    try {
+      const allCategories = await boxesService.getAllCategories();
+      const allLocations = await boxesService.getAllLocations();
+      setCategories(allCategories);
+      setLocations(allLocations);
+    } catch (error) {
+      console.error('Error loading filter options', error);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadBoxes();
+    setRefreshing(false);
+  };
+
+  const onChangeSearch = (query: string) => {
+    setSearchQuery(query);
+  };
+
+  useUpdateEffect(() => {
+    loadBoxes();
+  }, [searchQuery, selectedCategory, selectedLocation]);
+
+  const navigateToBoxDetail = (boxId: string) => {
+    navigation.navigate('BoxDetail', { boxId });
+  };
+
+  const navigateToAddBox = () => {
+    navigation.navigate('AddBox');
+  };
+
+  const resetFilters = () => {
+    setSelectedCategory(null);
+    setSelectedLocation(null);
+    setFilterModalVisible(false);
+  };
+
+  const applyFilters = () => {
+    setFilterModalVisible(false);
+    loadBoxes();
+  };
+
+  const handleEdit = (box: Box) => {
+    navigation.navigate('EditBox', { box });
+  };
+
+  const handleGenerateQR = (box: Box) => {
+    // Usamos CommonActions para navegar entre diferentes stacks
+    navigation.dispatch(
+      CommonActions.navigate({
+        name: 'QRStack',
+        params: {
+          screen: 'QRScan',
+          params: { boxId: box.id }
         }
+      })
+    );
+  };
+
+  const handleDelete = async (boxId: string) => {
+    Alert.alert(
+      'Confirmar eliminación',
+      '¿Estás seguro de que quieres eliminar este contenedor?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await boxesService.deleteBox(boxId);
+              setBoxes(boxes.filter(box => box.id !== boxId));
+            } catch (error) {
+              console.error('Error deleting box:', error);
+              Alert.alert('Error', 'No se pudo eliminar el contenedor');
+            }
+          },
+        },
       ]
     );
   };
 
-  const handleEdit = (box: Box) => {
-    // Por ahora solo mostraremos un mensaje
-    Alert.alert(
-      "Editar Contenedor",
-      `Editando contenedor: ${box.name}`,
-      [{ text: "OK" }]
-    );
-  };
-
-  const handleGenerateQR = (id: string) => {
-    // Buscamos el contenedor con el ID proporcionado
-    const box = boxes.find(box => box.id === id);
-    if (box) {
-      // Guardamos el contenedor seleccionado y mostramos el modal
-      setSelectedBox(box);
-      setQrModalVisible(true);
-    }
-  };
-
-  const closeQRModal = () => {
-    setQrModalVisible(false);
-  };
-
   return (
     <View style={styles.container}>
-      <FlatList
-        data={boxes}
-        renderItem={({ item }) => (
-          <BoxCard
-            box={item}
-            onDelete={handleDelete}
-            onEdit={handleEdit}
-            onGenerateQR={handleGenerateQR}
-          />
-        )}
-        keyExtractor={item => item.id}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No hay contenedores disponibles</Text>
-          </View>
-        }
-        contentContainerStyle={boxes.length === 0 ? styles.listEmpty : styles.list}
-      />
-
-      {/* Modal para mostrar el código QR */}
-      {selectedBox && (
-        <QRCodeModal
-          visible={qrModalVisible}
-          onClose={closeQRModal}
-          boxId={selectedBox.id}
-          boxName={selectedBox.name}
+      <View style={styles.searchContainer}>
+        <Searchbar
+          placeholder="Buscar contenedor..."
+          onChangeText={onChangeSearch}
+          value={searchQuery}
+          style={styles.searchBar}
         />
+        <TouchableOpacity 
+          style={styles.filterButton} 
+          onPress={() => setFilterModalVisible(true)}
+        >
+          <Text style={[styles.filterButtonText, isFiltered && styles.activeFilter]}>
+            {isFiltered ? "Filtros activos" : "Filtrar"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+      
+      {isFiltered && (
+        <View style={styles.activeFiltersContainer}>
+          {selectedCategory && (
+            <Chip 
+              style={styles.filterChip} 
+              onClose={() => setSelectedCategory(null)}
+            >
+              Categoría: {selectedCategory}
+            </Chip>
+          )}
+          {selectedLocation && (
+            <Chip 
+              style={styles.filterChip} 
+              onClose={() => setSelectedLocation(null)}
+            >
+              Ubicación: {selectedLocation}
+            </Chip>
+          )}
+        </View>
       )}
 
-      {/* Botón flotante para añadir nuevo contenedor */}
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('AddBox' as never)}
-      >
-        <Ionicons name="add" size={24} color="white" />
-      </TouchableOpacity>
+      <FlatList
+        data={boxes}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={({ item }) => (
+          <BoxCard 
+            box={item} 
+            onPress={() => navigateToBoxDetail(item.id)} 
+            onDelete={() => handleDelete(item.id)}
+            onEdit={() => handleEdit(item)}
+            onGenerateQR={() => handleGenerateQR(item)}
+          />
+        )}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
+      />
+
+      <Portal>
+        <Modal
+          visible={filterModalVisible}
+          onDismiss={() => setFilterModalVisible(false)}
+          contentContainerStyle={styles.modalContainer}
+        >
+          <Card style={styles.filterCard}>
+            <Card.Title title="Filtrar contenedores" />
+            <Card.Content>
+              <Text style={styles.filterTitle}>Categoría</Text>
+              <View style={styles.filterOptions}>
+                {categories.map(category => (
+                  <Chip
+                    key={category}
+                    selected={selectedCategory === category}
+                    onPress={() => setSelectedCategory(selectedCategory === category ? null : category)}
+                    style={styles.filterChip}
+                    mode={selectedCategory === category ? "flat" : "outlined"}
+                  >
+                    {category}
+                  </Chip>
+                ))}
+              </View>
+              
+              <Text style={styles.filterTitle}>Ubicación</Text>
+              <View style={styles.filterOptions}>
+                {locations.map(location => (
+                  <Chip
+                    key={location}
+                    selected={selectedLocation === location}
+                    onPress={() => setSelectedLocation(selectedLocation === location ? null : location)}
+                    style={styles.filterChip}
+                    mode={selectedLocation === location ? "flat" : "outlined"}
+                  >
+                    {location}
+                  </Chip>
+                ))}
+              </View>
+            </Card.Content>
+            <Card.Actions>
+              <Button onPress={resetFilters}>Restablecer</Button>
+              <Button onPress={applyFilters} mode="contained">Aplicar</Button>
+            </Card.Actions>
+          </Card>
+        </Modal>
+      </Portal>
+
+      <FAB.Group
+        open={fabOpen}
+        visible={true}
+        icon={fabOpen ? 'close' : 'plus'}
+        actions={[
+          {
+            icon: 'plus',
+            label: 'Agregar contenedor',
+            onPress: navigateToAddBox,
+          },
+        ]}
+        onStateChange={({ open }: { open: boolean }) => setFabOpen(open)}
+        fabStyle={styles.fab}
+      />
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    padding: 8,
+    alignItems: 'center',
+  },
+  searchBar: {
+    flex: 1,
+    marginRight: 8,
+  },
+  filterButton: {
+    padding: 10,
+  },
+  filterButtonText: {
+    color: '#007AFF',
+  },
+  activeFilter: {
+    fontWeight: 'bold',
+    color: '#007AFF',
+  },
+  activeFiltersContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+  },
+  filterChip: {
+    marginRight: 8,
+    marginBottom: 8,
   },
   list: {
-    paddingVertical: 12,
-  },
-  listEmpty: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666',
-    textAlign: 'center',
+  listContent: {
+    padding: 8,
   },
   fab: {
-    position: 'absolute',
-    width: 56,
-    height: 56,
-    alignItems: 'center',
-    justifyContent: 'center',
-    right: 20,
-    bottom: 20,
     backgroundColor: '#007AFF',
-    borderRadius: 28,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+  },
+  modalContainer: {
+    padding: 20,
+  },
+  filterCard: {
+    padding: 10,
+  },
+  filterTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  filterOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
 });
-
-export default BoxesScreen;

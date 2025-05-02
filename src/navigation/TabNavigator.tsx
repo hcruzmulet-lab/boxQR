@@ -4,9 +4,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // Importación de pantallas
-import BoxesScreen from '../screens/boxes/BoxesScreen';
+import { BoxesScreen } from '../screens/boxes/BoxesScreen';
 import AddBoxScreen from '../screens/boxes/AddBoxScreen';
 import BoxDetailScreen from '../screens/boxes/BoxDetailScreen';
+import EditBoxScreen from '../screens/boxes/EditBoxScreen';
 import QRScreen from '../screens/qr/QRScreen';
 import FAQScreen from '../screens/FAQ/FAQScreen';
 
@@ -25,7 +26,11 @@ const BoxesStackNavigator = () => {
         name="Contenedores" 
         component={BoxesScreen}
         options={{ 
-          headerShown: false 
+          title: "Contenedores",
+          headerStyle: {
+            backgroundColor: '#007AFF',
+          },
+          headerTintColor: '#FFFFFF',
         }}
       />
       <BoxesStack.Screen 
@@ -45,6 +50,18 @@ const BoxesStackNavigator = () => {
         component={BoxDetailScreen}
         options={{ 
           title: "Detalle del Contenedor",
+          headerBackTitle: "",
+          headerStyle: {
+            backgroundColor: '#007AFF',
+          },
+          headerTintColor: '#FFFFFF',
+        }}
+      />
+      <BoxesStack.Screen 
+        name="EditBox" 
+        component={EditBoxScreen}
+        options={{ 
+          title: "Editar Contenedor",
           headerBackTitle: "",
           headerStyle: {
             backgroundColor: '#007AFF',

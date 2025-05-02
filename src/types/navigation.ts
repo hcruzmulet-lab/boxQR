@@ -10,10 +10,11 @@ export type RootTabParamList = {
 export type BoxesStackParamList = {
   Contenedores: { newBox?: Box };
   AddBox: undefined;
-  BoxDetail: { boxId: string };
+  BoxDetail: { boxId: string; updatedBox?: Box };
+  EditBox: { box: Box };
 };
 
 export type QRStackParamList = {
   QRScan: undefined;
-  BoxDetail: { boxId: string };
+  BoxDetail: { boxId: string; updatedBox?: Box };
 };

@@ -7,18 +7,26 @@ export interface Box {
   id: string;
   name: string;
   itemCount: number;
+  description?: string;
+  location?: string;
+  category?: string;
 }
 
 interface BoxCardProps {
   box: Box;
+  onPress?: () => void;
   onDelete?: (id: string) => void;
   onEdit?: (box: Box) => void;
   onGenerateQR?: (id: string) => void;
 }
 
-const BoxCard: React.FC<BoxCardProps> = ({ box, onDelete, onEdit, onGenerateQR }) => {
+const BoxCard: React.FC<BoxCardProps> = ({ box, onDelete, onEdit, onGenerateQR, onPress }) => {
   return (
-    <View style={styles.card}>
+    <TouchableOpacity 
+      style={styles.card}
+      onPress={onPress}
+      disabled={!onPress}
+    >
       <View style={styles.cardContent}>
         <Text style={styles.name}>{box.name}</Text>
         <Text style={styles.id}>ID: {box.id}</Text>
@@ -47,7 +55,7 @@ const BoxCard: React.FC<BoxCardProps> = ({ box, onDelete, onEdit, onGenerateQR }
           <Ionicons name="trash" size={20} color="#FF3B30" />
         </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

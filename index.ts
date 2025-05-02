@@ -1,3 +1,6 @@
+// Importamos el archivo de configuración global para los mocks primero
+import './global';
+
 import { registerRootComponent } from 'expo';
 
 import App from './src/App';
