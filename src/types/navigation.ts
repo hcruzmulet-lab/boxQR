@@ -12,6 +12,7 @@ export type BoxesStackParamList = {
   AddBox: undefined;
   BoxDetail: { boxId: string; updatedBox?: Box };
   EditBox: { box: Box };
+  BoxProducts: { boxId: string }; // Nueva ruta para la pantalla de productos
 };
 
 export type QRStackParamList = {

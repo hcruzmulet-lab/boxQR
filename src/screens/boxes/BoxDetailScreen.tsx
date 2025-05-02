@@ -64,6 +64,13 @@ const BoxDetailScreen = () => {
     }
   };
 
+  // Manejar la navegación a la pantalla de productos
+  const handleViewProducts = () => {
+    if (box) {
+      navigation.navigate('BoxProducts', { boxId: box.id });
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -139,7 +146,7 @@ const BoxDetailScreen = () => {
       )}
 
       <View style={styles.actionsContainer}>
-        <TouchableOpacity style={styles.actionButton}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleViewProducts}>
           <Ionicons name="list" size={28} color="#007AFF" />
           <Text style={styles.actionText}>Ver Items</Text>
         </TouchableOpacity>
