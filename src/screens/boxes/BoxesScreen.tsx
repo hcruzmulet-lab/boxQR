@@ -1,10 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Text, Alert } from 'react-native';
+import { 
+  View, 
+  StyleSheet, 
+  FlatList, 
+  TouchableOpacity, 
+  RefreshControl, 
+  Text, 
+  Alert, 
+  Modal,
+  Pressable,
+  ScrollView
+} from 'react-native';
 import { useIsFocused, useNavigation, CommonActions } from '@react-navigation/native';
 // Reemplazamos la importación de react-use por nuestra implementación personalizada
 import { useUpdateEffect } from '../../hooks/useUpdateEffect';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { Searchbar, FAB, Menu, Button, Chip, Modal, Portal, Card } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
 
 import { Box } from '../../components/boxes/BoxCard';
@@ -12,11 +22,174 @@ import BoxCard from '../../components/boxes/BoxCard';
 import { BoxesStackParamList } from '../../types/navigation';
 import { BoxesService } from '../../services/database/boxesService';
 
+// Componente personalizado para Chip
+interface ChipProps {
+  children: React.ReactNode;
+  style?: any;
+  onClose?: () => void;
+  selected?: boolean;
+  onPress?: () => void;
+  mode?: string;
+}
+
+const CustomChip: React.FC<ChipProps> = ({ 
+  children, 
+  style, 
+  onClose, 
+  selected, 
+  onPress,
+  mode = "flat"
+}) => {
+  const isOutlined = mode === "outlined";
+  return (
+    <TouchableOpacity
+      style={[
+        chipStyles.container,
+        isOutlined ? chipStyles.outlined : chipStyles.flat,
+        selected && chipStyles.selected,
+        style
+      ]}
+      onPress={onPress}
+    >
+      <Text style={[chipStyles.text, selected && chipStyles.selectedText]}>{children}</Text>
+      {onClose && (
+        <TouchableOpacity onPress={onClose} style={chipStyles.closeButton}>
+          <Ionicons name="close-circle" size={16} color="#666" />
+        </TouchableOpacity>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+const chipStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  flat: {
+    backgroundColor: '#e0e0e0',
+  },
+  outlined: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  selected: {
+    backgroundColor: '#007AFF',
+  },
+  text: {
+    fontSize: 14,
+  },
+  selectedText: {
+    color: 'white',
+  },
+  closeButton: {
+    marginLeft: 6,
+  },
+});
+
+// Componente personalizado para Botón
+interface ButtonProps {
+  children: React.ReactNode;
+  onPress: () => void;
+  mode?: 'text' | 'contained';
+  style?: any;
+}
+
+const CustomButton: React.FC<ButtonProps> = ({ children, onPress, mode = 'text', style }) => {
+  const isContained = mode === 'contained';
+  return (
+    <TouchableOpacity
+      style={[
+        buttonStyles.button,
+        isContained ? buttonStyles.contained : buttonStyles.text,
+        style
+      ]}
+      onPress={onPress}
+    >
+      <Text 
+        style={[
+          buttonStyles.label, 
+          isContained ? buttonStyles.containedLabel : buttonStyles.textLabel
+        ]}
+      >
+        {children}
+      </Text>
+    </TouchableOpacity>
+  );
+};
+
+const buttonStyles = StyleSheet.create({
+  button: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  contained: {
+    backgroundColor: '#007AFF',
+  },
+  text: {
+    backgroundColor: 'transparent',
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  containedLabel: {
+    color: 'white',
+  },
+  textLabel: {
+    color: '#007AFF',
+  },
+});
+
+// Componente personalizado para FAB
+interface FABProps {
+  onPress: () => void;
+  icon: string;
+  style?: any;
+}
+
+const FAB: React.FC<FABProps> = ({ onPress, icon, style }) => {
+  return (
+    <TouchableOpacity 
+      style={[fabStyles.fab, style]} 
+      onPress={onPress}
+    >
+      <Ionicons name={icon} size={24} color="white" />
+    </TouchableOpacity>
+  );
+};
+
+const fabStyles = StyleSheet.create({
+  fab: {
+    position: 'absolute',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#007AFF',
+    right: 16,
+    bottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  }
+});
+
 export function BoxesScreen() {
   const [boxes, setBoxes] = useState<Box[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [fabOpen, setFabOpen] = useState(false);
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
@@ -44,9 +217,7 @@ export function BoxesScreen() {
     try {
       let loadedBoxes: Box[];
       
-      if (searchQuery) {
-        loadedBoxes = await boxesService.searchBoxes(searchQuery);
-      } else if (selectedCategory || selectedLocation) {
+      if (selectedCategory || selectedLocation) {
         loadedBoxes = await boxesService.filterBoxes({
           category: selectedCategory || undefined,
           location: selectedLocation || undefined,
@@ -80,13 +251,9 @@ export function BoxesScreen() {
     setRefreshing(false);
   };
 
-  const onChangeSearch = (query: string) => {
-    setSearchQuery(query);
-  };
-
   useUpdateEffect(() => {
     loadBoxes();
-  }, [searchQuery, selectedCategory, selectedLocation]);
+  }, [selectedCategory, selectedLocation]);
 
   const navigateToBoxDetail = (boxId: string) => {
     navigation.navigate('BoxDetail', { boxId });
@@ -149,43 +316,46 @@ export function BoxesScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.searchContainer}>
-        <Searchbar
-          placeholder="Buscar contenedor..."
-          onChangeText={onChangeSearch}
-          value={searchQuery}
-          style={styles.searchBar}
-        />
-        <TouchableOpacity 
-          style={styles.filterButton} 
-          onPress={() => setFilterModalVisible(true)}
-        >
-          <Text style={[styles.filterButtonText, isFiltered && styles.activeFilter]}>
-            {isFiltered ? "Filtros activos" : "Filtrar"}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {/* <View style={styles.header}>
+        <Text style={styles.headerTitle}>Mis Contenedores</Text>
+        {isFiltered && (
+          <TouchableOpacity 
+            style={styles.filterButton} 
+            onPress={() => setFilterModalVisible(true)}
+          >
+            <Text style={styles.activeFilter}>Filtros activos</Text>
+          </TouchableOpacity>
+        )}
+        {!isFiltered && (
+          <TouchableOpacity 
+            style={styles.filterButton} 
+            onPress={() => setFilterModalVisible(true)}
+          >
+            <Text style={styles.filterButtonText}>Filtrar</Text>
+          </TouchableOpacity>
+        )}
+      </View> */}
       
-      {isFiltered && (
+      {/* {isFiltered && (
         <View style={styles.activeFiltersContainer}>
           {selectedCategory && (
-            <Chip 
+            <CustomChip 
               style={styles.filterChip} 
               onClose={() => setSelectedCategory(null)}
             >
               Categoría: {selectedCategory}
-            </Chip>
+            </CustomChip>
           )}
           {selectedLocation && (
-            <Chip 
+            <CustomChip 
               style={styles.filterChip} 
               onClose={() => setSelectedLocation(null)}
             >
               Ubicación: {selectedLocation}
-            </Chip>
+            </CustomChip>
           )}
         </View>
-      )}
+      )} */}
 
       <FlatList
         data={boxes}
@@ -206,66 +376,75 @@ export function BoxesScreen() {
         contentContainerStyle={styles.listContent}
       />
 
-      <Portal>
-        <Modal
-          visible={filterModalVisible}
-          onDismiss={() => setFilterModalVisible(false)}
-          contentContainerStyle={styles.modalContainer}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={filterModalVisible}
+        onRequestClose={() => setFilterModalVisible(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay} 
+          onPress={() => setFilterModalVisible(false)}
         >
-          <Card style={styles.filterCard}>
-            <Card.Title title="Filtrar contenedores" />
-            <Card.Content>
-              <Text style={styles.filterTitle}>Categoría</Text>
-              <View style={styles.filterOptions}>
-                {categories.map(category => (
-                  <Chip
-                    key={category}
-                    selected={selectedCategory === category}
-                    onPress={() => setSelectedCategory(selectedCategory === category ? null : category)}
-                    style={styles.filterChip}
-                    mode={selectedCategory === category ? "flat" : "outlined"}
-                  >
-                    {category}
-                  </Chip>
-                ))}
+          <View 
+            style={styles.modalContainer}
+            onStartShouldSetResponder={() => true}
+            onTouchEnd={(e) => e.stopPropagation()}
+          >
+            <View style={styles.modalCard}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Filtrar contenedores</Text>
               </View>
               
-              <Text style={styles.filterTitle}>Ubicación</Text>
-              <View style={styles.filterOptions}>
-                {locations.map(location => (
-                  <Chip
-                    key={location}
-                    selected={selectedLocation === location}
-                    onPress={() => setSelectedLocation(selectedLocation === location ? null : location)}
-                    style={styles.filterChip}
-                    mode={selectedLocation === location ? "flat" : "outlined"}
-                  >
-                    {location}
-                  </Chip>
-                ))}
+              <ScrollView style={styles.modalContent}>
+                <Text style={styles.filterTitle}>Categoría</Text>
+                <View style={styles.filterOptions}>
+                  {categories.map(category => (
+                    <CustomChip
+                      key={category}
+                      selected={selectedCategory === category}
+                      onPress={() => setSelectedCategory(selectedCategory === category ? null : category)}
+                      style={styles.filterChip}
+                      mode={selectedCategory === category ? "flat" : "outlined"}
+                    >
+                      {category}
+                    </CustomChip>
+                  ))}
+                </View>
+                
+                <Text style={styles.filterTitle}>Ubicación</Text>
+                <View style={styles.filterOptions}>
+                  {locations.map(location => (
+                    <CustomChip
+                      key={location}
+                      selected={selectedLocation === location}
+                      onPress={() => setSelectedLocation(selectedLocation === location ? null : location)}
+                      style={styles.filterChip}
+                      mode={selectedLocation === location ? "flat" : "outlined"}
+                    >
+                      {location}
+                    </CustomChip>
+                  ))}
+                </View>
+              </ScrollView>
+              
+              <View style={styles.modalActions}>
+                <CustomButton onPress={resetFilters}>
+                  Restablecer
+                </CustomButton>
+                <CustomButton onPress={applyFilters} mode="contained">
+                  Aplicar
+                </CustomButton>
               </View>
-            </Card.Content>
-            <Card.Actions>
-              <Button onPress={resetFilters}>Restablecer</Button>
-              <Button onPress={applyFilters} mode="contained">Aplicar</Button>
-            </Card.Actions>
-          </Card>
-        </Modal>
-      </Portal>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
 
-      <FAB.Group
-        open={fabOpen}
-        visible={true}
-        icon={fabOpen ? 'close' : 'plus'}
-        actions={[
-          {
-            icon: 'plus',
-            label: 'Agregar contenedor',
-            onPress: navigateToAddBox,
-          },
-        ]}
-        onStateChange={({ open }: { open: boolean }) => setFabOpen(open)}
-        fabStyle={styles.fab}
+      <FAB
+        icon="add"
+        onPress={navigateToAddBox}
+        style={styles.fab}
       />
     </View>
   );
@@ -274,15 +453,21 @@ export function BoxesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#f5f5f5',
   },
-  searchContainer: {
+  header: {
     flexDirection: 'row',
-    padding: 8,
+    justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
   },
-  searchBar: {
-    flex: 1,
-    marginRight: 8,
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   filterButton: {
     padding: 10,
@@ -297,8 +482,9 @@ const styles = StyleSheet.create({
   activeFiltersContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 8,
-    paddingBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#f9f9f9',
   },
   filterChip: {
     marginRight: 8,
@@ -313,11 +499,46 @@ const styles = StyleSheet.create({
   fab: {
     backgroundColor: '#007AFF',
   },
-  modalContainer: {
-    padding: 20,
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  filterCard: {
-    padding: 10,
+  modalContainer: {
+    width: '90%',
+    maxWidth: 400,
+    backgroundColor: 'transparent',
+  },
+  modalCard: {
+    backgroundColor: 'white',
+    borderRadius: 8,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  modalHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  modalContent: {
+    padding: 16,
+    maxHeight: 400,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
   },
   filterTitle: {
     fontSize: 16,
